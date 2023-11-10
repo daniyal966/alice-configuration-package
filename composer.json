@@ -1,0 +1,26 @@
+{
+    "name": "alice/configuration",
+    "description": "this package is used for alice configuration and used endpoints of alice",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "daniyal966",
+            "email": "danial.zulfiqar@developers.studio"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {},
+    "autoload": {
+        "psr-4": {
+            "Alice\\Configuration\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Alice\\Configuration\\AliceConfigurationServiceProvider"
+            ]
+        }
+    }
+}
