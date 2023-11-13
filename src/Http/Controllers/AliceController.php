@@ -6,27 +6,30 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Alice\Configuration\Models\KycToken;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Validator;
 
 
 
 class AliceController extends Controller
 {
     
-    public function authenticate(){
+    public function authenticate(Request $request){
         try {
+             // Define the required parameters
+            $requiredParameters = ['alice_key'];
+            // Validate required parameters
+            $validationResult = $this->validateRequiredParameters($request, $requiredParameters);
+            if ($validationResult !== null) {
+                return $validationResult;
+            }
             $url = config('aliceConstants.KYC_URL');
-            $headers = ['apikey:' . config('aliceConstants.KYC_API_KEY')];
+            $headers = ['apikey:' . $request->alice_key];
             $loginResponse = curlRequest($url . 'login_token', NULL, false, $headers, false);
             if ($loginResponse['header_code'] == 200) {
                 $loginToken = json_decode($loginResponse['body'])->token;
                 $authHeaders = ['Content-Type: application/json', 'Authorization: Bearer ' . $loginToken];
                 $backendResponse = curlRequest($url . 'backend_token', NULL, false, $authHeaders, false);
                 $backendToken = json_decode($backendResponse['body'])->token;
-                
-                // if ($backendResponse['header_code'] == 200) {
-                //     KycToken::updateOrCreate(['id' => 1],
-                //         ['login_token' => $loginToken, 'backend_token' => $backendToken]);
-                // }
             }
             $data = [
                 'login_token'    => $loginToken,
@@ -43,21 +46,25 @@ class AliceController extends Controller
     public function createAliceKycUser(Request $request){
        
          // Define the required parameters
-    $requiredParameters = ['login_token', 'backend_token', 'email', 'first_name', 'last_name'];
-    $missingParameters = [];
+        $requiredParameters = ['login_token', 'backend_token', 'email', 'first_name', 'last_name'];
+         // Check if all required parameters are present in the request
+         $validationResult = $this->validateRequiredParameters($request, $requiredParameters);
+         if ($validationResult !== null) {
+             return $validationResult;
+         }
+        // Check if all required parameters are present in the request
+        $validator = Validator::make($request->all(), [
+            'login_token' => 'required',
+            'backend_token' => 'required',
+            'email' => 'required|email',
+            'first_name' => 'required',
+            'last_name' => 'required',
+        ]);
 
-     // Check if all required parameters are present in the request
-     foreach ($requiredParameters as $param) {
-        if (!$request->has($param)) {
-            // If a required parameter is missing, add it to the list of missing parameters
-            $missingParameters[] = $param;
+        // Check if validation fails
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()], 400);
         }
-    }
-     // Check if two or more parameters are missing
-     if (count($missingParameters) >= 1) {
-        // Return an error response specifying the missing parameters
-        return response()->json(['error' => 'The following parameters are missing: ' . implode(', ', $missingParameters)], 400);
-    }
         $url = config('aliceConstants.KYC_URL');
         $aliceToken=$request->backend_token;
         $payLoad = [
@@ -154,26 +161,17 @@ class AliceController extends Controller
      * @param $token
      * @return false|JsonResponse
      */
-    public static function performKyc(Request $request)
+    public function performKyc(Request $request)
     {
         try {
             $requiredParameters = ['login_token','kyc_user_id' ];
-             // Create an array to store missing parameters
-            $missingParameters = [];
+            
 
-            // Check if all required parameters are present in the request
-            foreach ($requiredParameters as $param) {
-                if (!$request->has($param)) {
-                    // If a required parameter is missing, add it to the list of missing parameters
-                    $missingParameters[] = $param;
-                }
-            }
-
-            // Check if two or more parameters are missing
-            if (count($missingParameters) >= 1) {
-                // Return an error response specifying the missing parameters
-                return response()->json(['error' => 'The following parameters are missing: ' . implode(', ', $missingParameters)], 400);
-            }
+            // // Check if all required parameters are present in the request
+             $validationResult = $this->validateRequiredParameters($request, $requiredParameters);
+             if ($validationResult !== null) {
+                 return $validationResult;
+             }
             $url = config('aliceConstants.KYC_URL');
             $loginToken = ['Authorization: Bearer ' . $request->login_token];
 
@@ -204,7 +202,7 @@ class AliceController extends Controller
      * @param $token
      * @return false|JsonResponse
      */
-    public static function backendTokenWithUserId(Request $request)
+    public function backendTokenWithUserId(Request $request)
     {
         try {
 
@@ -212,17 +210,10 @@ class AliceController extends Controller
             // Create an array to store missing parameters
            $missingParameters = [];
            // Check if all required parameters are present in the request
-           foreach ($requiredParameters as $param) {
-            if (!$request->has($param)) {
-                // If a required parameter is missing, add it to the list of missing parameters
-                $missingParameters[] = $param;
-                }
-            }
-
-            // Check if two or more parameters are missing
-            if (count($missingParameters) >= 1) {
-                // Return an error response specifying the missing parameters
-                return response()->json(['error' => 'The following parameters are missing: ' . implode(', ', $missingParameters)], 400);
+            // Validate required parameters
+            $validationResult = $this->validateRequiredParameters($request, $requiredParameters);
+            if ($validationResult !== null) {
+                return $validationResult;
             }
             $url = config('aliceConstants.KYC_URL');
             // $aliceToken = KycToken::first();
@@ -260,18 +251,11 @@ class AliceController extends Controller
         try {
                  // Define the required parameters
             $requiredParameters = ['backend_token'];
-            $missingParameters = [];
               // Check if all required parameters are present in the request
-            foreach ($requiredParameters as $param) {
-                if (!$request->has($param)) {
-                    // If a required parameter is missing, add it to the list of missing parameters
-                    $missingParameters[] = $param;
-                }
-            }
-            // Check if two or more parameters are missing
-            if (count($missingParameters) >= 1) {
-                // Return an error response specifying the missing parameters
-                return response()->json(['error' => 'The following parameter is missing: ' . implode(', ', $missingParameters)], 400);
+           // Validate required parameters
+            $validationResult = self::validateRequiredParameters($request, $requiredParameters);
+            if ($validationResult !== null) {
+                return $validationResult;
             }
             $url = config('aliceConstants.KYC_URL');
             //creating multipart form data for alice user
@@ -290,6 +274,7 @@ class AliceController extends Controller
                 $backendToken,
                 false
             );
+            // dd($aliceUserId );
             if ($aliceUserId['header_code'] == 401) {      
                 return response()->json(['error' => 'token expired'], 401);
             }
@@ -309,19 +294,12 @@ class AliceController extends Controller
         try {
             // Define the required parameters
             $requiredParameters = ['backend_token_with_userid',"status"];
-            $missingParameters = [];
                 // Check if all required parameters are present in the request
-            foreach ($requiredParameters as $param) {
-                if (!$request->has($param)) {
-                    // If a required parameter is missing, add it to the list of missing parameters
-                    $missingParameters[] = $param;
-                }
-            }
-            // Check if two or more parameters are missing
-            if (count($missingParameters) >= 1) {
-                // Return an error response specifying the missing parameters
-                return response()->json(['error' => 'The following parameter is missing: ' . implode(', ', $missingParameters)], 400);
-            }
+             // Validate required parameters
+             $validationResult = self::validateRequiredParameters($request, $requiredParameters);
+             if ($validationResult !== null) {
+                 return $validationResult;
+             }
             $allowedStatusValues = ['REJECTED', 'TO_REVIEW', 'ACCEPTED', 'NOT_STARTED', 'IN_PROGRESS'];
              // Check if the 'status' parameter is present and is a valid value
             if (!$request->has('status') || !in_array($request->status, $allowedStatusValues)) {
@@ -360,6 +338,37 @@ class AliceController extends Controller
         } catch (\Exception $e) {
             return returnErrors($e, __FUNCTION__);
         }
+    }
+
+
+    /**
+     * Validate the presence of required parameters in the request.
+     *
+     * @param Request $request
+     * @param array $requiredParameters
+     * @return \Illuminate\Http\JsonResponse|null
+     */
+    public static function validateRequiredParameters(Request $request, array $requiredParameters)
+    {
+         // Create an array to store missing parameters
+        $missingParameters = [];
+
+        // Check if all required parameters are present in the request
+        foreach ($requiredParameters as $param) {
+            if (!$request->has($param)) {
+                // If a required parameter is missing, add it to the list of missing parameters
+                $missingParameters[] = $param;
+            }
+        }
+
+        // Check if two or more parameters are missing
+        if (count($missingParameters) >= 1) {
+            // Return an error response specifying the missing parameters
+            return response()->json(['error' => 'The following parameters are missing: ' . implode(', ', $missingParameters)], 400);
+        }
+
+        // Validation passed
+        return null;
     }
 
 
