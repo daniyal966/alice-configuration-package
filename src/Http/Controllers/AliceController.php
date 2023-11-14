@@ -7,6 +7,8 @@ use App\Http\Controllers\Controller;
 use Alice\Configuration\Models\KycToken;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Validator;
+use Alice\Configuration\AliceConfigurationFacade;
+
 
 
 
@@ -364,18 +366,12 @@ class AliceController extends Controller
         // Check if two or more parameters are missing
         if (count($missingParameters) >= 1) {
             // Return an error response specifying the missing parameters
-            return response()->json(['error' => 'The following parameters are missing: ' . implode(', ', $missingParameters)], 400);
+            return ['error' => 'The following parameters are missing: ' . implode(', ', $missingParameters)];
         }
 
         // Validation passed
         return null;
     }
-
-
-
-
-
-
 
 
 
