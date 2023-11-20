@@ -17,7 +17,7 @@ Route::group(['namespace'=>'Alice\Configuration\Http\Controllers'], function(){
     Route::post('/validate-kyc-token' , [AliceController::class , 'performKyc']);
     Route::post('/kyc-user-report' , [AliceController::class , 'getKycUserReport']);
     Route::post('/update-user-status' , [AliceController::class , 'updateUserStatusAfterDocumentCheck']);
-    Route::post('/update-user-report' , [AliceController::class , 'updateUserReport']);
+    Route::post('/update-user-report' , [AliceController::class , 'updateUserReportAgainstThresholdCheck']);
 
 
 

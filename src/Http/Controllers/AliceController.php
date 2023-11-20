@@ -341,6 +341,99 @@ class AliceController extends Controller
             return returnErrors($e, __FUNCTION__);
         }
     }
+     
+
+
+    public function updateUserReportAgainstThresholdCheck(Request $request)
+    {
+        try {
+                // Define the required parameters
+            $requiredParameters = ['backend_token'];
+                // Check if all required parameters are present in the request
+            // Validate required parameters
+            $validationResult = self::validateRequiredParameters($request, $requiredParameters);
+            if ($validationResult !== null) {
+                return $validationResult;
+            }
+            $backendToken = $request->backend_token;
+            if ($backendToken){
+                $report = self::getKycUserReport(new request(['backend_token'=>$request->backend_token]));
+                if(isset($report->original['error'])){
+                    return response()->json(['error' => 'token expired'], 401);
+                }
+                $documentSecurity =$report->report->documents[0]->result->document_security;
+                $documentRead=$report->report->documents[0]->result->document_read;
+                $documentUpload=$report->report->documents[0]->meta->completed; 
+                // Initialize a new array to store the extracted items      
+                $extractedArray = [];
+                // Define the keys you are looking for
+                $desiredKeys = ['not_a_printed_document', 'not_a_screen_document'];
+                $responseArray=$report->report->documents[0]->checks;
+                // Iterate through the response array
+                foreach ($responseArray as $item) {
+                    // Check if the current item's key is one of the desired keys
+                    if (in_array($item->key, $desiredKeys)) {
+                        // Push the current item into the extracted array
+                        $extractedArray[] = $item;
+                    }
+                }
+                $extractedArray[] = (object)[
+                    "key" => 'document_security',
+                    "value" => $documentSecurity,
+                ];
+                $extractedArray[] = (object)[
+                    "key" => 'document_read',
+                    "value" =>  $documentRead,
+                ];
+                $extractedArray[] = (object)[
+                    "key" => 'document_upload',
+                    "value" => $documentUpload,
+                ];
+
+                $score = 0;
+                  // Iterate through the array of objects
+                foreach ($extractedArray as $object) {
+                    if ($object->key == 'not_a_printed_document' && $object->value > 50 ) {
+                        $score = 100;
+                    }
+                    if ($object->key == ('not_a_screen_document')  && $object->value > 50 ) {
+                        $score = 100;
+                    }
+                    if (($object->key == 'document_read' && $object->value =='ok') && ($object->key == 'document_security' && $object->value =='ok') ) {
+                        $score =  100;
+                    }
+                    else{
+                        $score-=100;
+                    }
+                    if ($object->key == 'document_upload' && $object->value =='true' ) {
+
+                        $score = 100;
+                    }
+                    else{
+                        $score-=100;
+                    }
+                }
+                $status='NOT_STARTED';
+                $score > 0 ? $status='ACCEPTED' : $status='REJECTED';
+
+                $updateStatus=self::updateUserStatusAfterDocumentCheck(new request(['backend_token_with_userid'=>$backendToken,'status'=>$status]));
+                $message="";
+                $status=='ACCEPTED'? $message="Your kyc accepted":$message="Your kyc rejected";
+                return ['Status' => $message];
+
+                }
+            else{
+                return response()->json(['error' => ['Token is required']], 204);
+            }
+        } catch (\Exception $e) {
+            // Call the returnErrors function and pass the exception and the current function name as parameters
+            return returnErrors($e, __FUNCTION__);
+        }
+    } 
+
+
+
+
 
 
     /**
